@@ -15,27 +15,16 @@ object Main {
     val logger = org.slf4j.LoggerFactory.getLogger("example.Main")
     InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")) {
       if (System.currentTimeMillis() - 1 < 0) {
-        assert("decorateIfs: if block" != null)
-      } else {
-        assert("decorateIfs: else block" != null)
-      }
-    }
-
-    // More complex use case that doesn't work quite yet.
-    /*
-    InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")) {
-      if (System.currentTimeMillis() - 1 < 0) {
-        assert("decorateIfs: if block" != null)
+        println("decorateIfs: if block")
       } else if (System.getProperty("derp") != null) {
-        assert("decorateIfs: if else block" != null)
+        println("decorateIfs: if else block")
       } else {
-        assert("decorateIfs: else block" != null)
+        println("decorateIfs: else block")
       }
     }
-    */
 
-    val list = listAppender.list
-    println(list.get(0).getMessage) // check that the debug message is in there
+    //val list = listAppender.list
+    //println(list.get(0).getMessage) // check that the debug message is in there
   }
 
   //-----------------------------------------------

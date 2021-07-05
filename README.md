@@ -9,9 +9,11 @@ Other macro example projects are mostly concerned with types rather than rewriti
 ```scala
 InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")) {
   if (System.currentTimeMillis() - 1 < 0) {
-    assert("decorateIfs: if block" != null)
+    println("decorateIfs: if block")
+  } else if (System.getProperty("derp") != null) {
+    println("decorateIfs: if else block")
   } else {
-    assert("decorateIfs: else block" != null)
+    println("decorateIfs: else block")
   }
 }
 ```
@@ -19,11 +21,17 @@ InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")
 will stick block of `logger.debug` into each branch, so the end result is:
 
 ```scala
-if (System.currentTimeMillis() - 1 < 0) {
-  logger.debug(s"java.lang.System.currentTimeMillis().-(1).<(0) = true")
-  assert("decorateIfs: if block" != null)
+if (java.lang.System.currentTimeMillis().-(1).<(0)) {
+  output$proxy2.apply(example.BranchInspection.apply("java.lang.System.currentTimeMillis().-(1).<(0)", true))
+  scala.Predef.println("decorateIfs: if block")
 } else {
-  logger.debug(s"java.lang.System.currentTimeMillis().-(1).<(0) = false")
-  assert("decorateIfs: else block" != null)
+  output$proxy2.apply(example.BranchInspection.apply("java.lang.System.currentTimeMillis().-(1).<(0)", false))
+  if (java.lang.System.getProperty("derp").!=(null)) {
+    output$proxy2.apply(example.BranchInspection.apply("java.lang.System.getProperty(\"derp\").!=(null)", true))
+    scala.Predef.println("decorateIfs: if else block")
+  } else {
+    output$proxy2.apply(example.BranchInspection.apply("java.lang.System.getProperty(\"derp\").!=(null)", false))
+    scala.Predef.println("decorateIfs: else block")
+  }
 }
 ```

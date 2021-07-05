@@ -14,7 +14,59 @@ object InspectionMacros {
   inline def decorateIfs[A](output: BranchInspection => Unit)(ifStatement: => A): A =
     ${ Impl.decorateIfsImpl('output, 'ifStatement)}
 
+  inline def decorateMatch[A](output: BranchInspection => Unit)(matchStatement: => A): A =
+    ${ Impl.decorateMatchImpl('output, 'matchStatement) }
+
   object Impl {
+
+    def decorateMatchImpl[A: Type](
+                                    output: Expr[BranchInspection => Unit],
+                                    matchStatement: Expr[A]
+                                  )(using Quotes): Expr[A] = {
+      import quotes.reflect.*
+
+      matchStatement.asTerm match {
+        case Inlined(_, _, matchIdent: Ident) =>
+          matchIdent.symbol.tree match {
+            case DefDef(_, _, _, Some(term)) =>
+              // Block(List(),Match(Ident(string),List(CaseDef(Bind(s,Ident(_)),Apply(Select(Ident(s),startsWith),List(Literal(Constant(20)))),Block(List(),Apply(Ident(println),List(Literal(Constant(this example is still valid)))))), CaseDef(Ident(_),EmptyTree,Block(List(),Apply(Ident(println),List(Literal(Constant(oh dear)))))))))
+              //println(s"matchStatement = ${term}")
+              val modifiedMatch = term match {
+                case Block(b, Match(m, cases)) =>
+                  // List of case defs
+                  //println(s"cases = ${cases}")
+                  val enhancedCases = cases.map {
+                    case CaseDef(pat: Tree, guard: Option[Term], body: Term) =>
+                      val guardSource = guard.map(t => s" if ${t.show}").getOrElse("")
+                      val patSource   = pat match {
+                        case Bind(b, f) => s"case $b"
+                        case Ident(i) => s"case $i"
+                        case other =>
+                          println(s"Unexpected macro case $other")
+                          s"case $other"
+                      }
+                      val src         = Expr(s"$patSource$guardSource")
+                      val bodyExpr    = body.asExpr
+                      val stmt        = '{ $output(BranchInspection($src, true)); $bodyExpr }
+                      CaseDef(pat, guard, stmt.asTerm)
+                  }
+                  Block(b, Match(m, enhancedCases))
+                case other =>
+                  println(s"other = $other")
+                  other
+              }
+              println(s"${modifiedMatch.show}")
+              modifiedMatch.asExpr.asInstanceOf[Expr[A]]
+
+            case otherIdent =>
+              report.error(s"Not a valid identifier: ${otherIdent}")
+              matchStatement
+          }
+        case other =>
+          report.error(s"Parameter must be a known ident: ${other.show}")
+          matchStatement
+      }
+    }
 
     def decorateIfsImpl[A: Type](
       output: Expr[BranchInspection => Unit],
@@ -68,5 +120,6 @@ object InspectionMacros {
       }
     }
   }
+
 }
 

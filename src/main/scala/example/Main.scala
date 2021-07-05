@@ -21,7 +21,18 @@ object Main {
       } else {
         println("decorateIfs: else block")
       }
+   }
+
+    val string = java.time.Instant.now().toString
+    InspectionMacros.decorateMatch(dm => logger.debug(s"${dm.code} = ${dm.result}")) {
+      string match {
+        case s if s.startsWith("20") =>
+          println("this example is still valid")
+        case _ =>
+          println("oh dear")
+      }
     }
+
 
     //val list = listAppender.list
     //println(list.get(0).getMessage) // check that the debug message is in there

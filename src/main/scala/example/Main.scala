@@ -17,10 +17,22 @@ object Main {
       if (System.currentTimeMillis() - 1 < 0) {
         assert("decorateIfs: if block" != null)
       } else {
-        // Doesn't work on the else case?!
         assert("decorateIfs: else block" != null)
       }
     }
+
+    // More complex use case that doesn't work quite yet.
+    /*
+    InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")) {
+      if (System.currentTimeMillis() - 1 < 0) {
+        assert("decorateIfs: if block" != null)
+      } else if (System.getProperty("derp") != null) {
+        assert("decorateIfs: if else block" != null)
+      } else {
+        assert("decorateIfs: else block" != null)
+      }
+    }
+    */
 
     val list = listAppender.list
     println(list.get(0).getMessage) // check that the debug message is in there

@@ -14,7 +14,7 @@ object Main {
   def main(args: Array[String]): Unit = {
     val logger = org.slf4j.LoggerFactory.getLogger("example.Main")
     InspectionMacros.decorateIfs(dif => logger.debug(s"${dif.code} = ${dif.result}")) {
-      if (System.currentTimeMillis() - 1 >= 0) {
+      if (System.currentTimeMillis() - 1 < 0) {
         assert("decorateIfs: if block" != null)
       } else {
         // Doesn't work on the else case?!

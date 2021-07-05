@@ -40,7 +40,9 @@ object InspectionMacros {
                   val elsep: Expr[A] = elseTerm.asExpr.asInstanceOf[Expr[A]]
 
                   // Return a construction with the new statement
-                  '{ if ($cond) { $output($branchTrue); $thenp } else { $branchFalse; $elsep } }
+                  val remade = '{ if ($cond) { $output($branchTrue); $thenp } else { $output($branchFalse); $elsep } }
+                  //println(s"remade = ${remade.show}")
+                  remade
                 case otherIf =>
                   report.error(s"Not an if statement: ${otherIf}")
                   ifStatement

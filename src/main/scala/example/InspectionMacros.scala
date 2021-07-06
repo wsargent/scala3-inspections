@@ -8,6 +8,23 @@ package example
  */
 case class BranchInspection(code: String, result: Boolean)
 
+/**
+ * Debugs a result.
+ *
+ * @param code the code that went into the result
+ * @param value the result
+ * @tparam A the type of the result.
+ */
+case class ExprInspection[A](code: String, value: A)
+
+/**
+ * Debugs a valdef.
+ *
+ * @param name name of the val or var
+ * @param value the value of the val or var
+ */
+case class ValDefInspection(name: String, value: Any)
+
 object InspectionMacros {
   import scala.quoted.*
 
@@ -16,6 +33,12 @@ object InspectionMacros {
 
   inline def decorateMatch[A](output: BranchInspection => Unit)(matchStatement: => A): A =
     ${ Impl.decorateMatchImpl('output, 'matchStatement) }
+
+  inline def dumpExpression[A](block: A): ExprInspection[A] =
+    ${ Impl.dumpExpressionImpl('block) }
+
+  inline def decorateVals[A](output: ValDefInspection => Unit)(block: => A): A =
+    ${ Impl.decorateValsImpl('output, 'block) }
 
   object Impl {
 
@@ -55,7 +78,7 @@ object InspectionMacros {
                   println(s"other = $other")
                   other
               }
-              println(s"${modifiedMatch.show}")
+              //println(s"${modifiedMatch.show}")
               modifiedMatch.asExpr.asInstanceOf[Expr[A]]
 
             case otherIdent =>
@@ -106,6 +129,7 @@ object InspectionMacros {
       // so we have to dig a little to get the actual if statement.
       ifStatement.asTerm match {
         case Inlined(_, _, ifIdent: Ident) =>
+          // XXX blockTerm.symbol
           ifIdent.symbol.tree match {
             case DefDef(_, _, _, Some(term)) =>
               findIfMethod(term)
@@ -118,6 +142,52 @@ object InspectionMacros {
           report.error(s"Parameter must be a known ident: ${other.show}")
           ifStatement
       }
+    }
+
+    def dumpExpressionImpl[A: Type](block: Expr[A])(using Quotes): Expr[ExprInspection[A]] = {
+      import quotes.reflect.*
+
+      // this is the same as sourcecode.Text :-/
+      val result = block.asTerm.pos.sourceCode.get
+      val const  = Expr(result)
+      '{ ExprInspection($const, $block) }
+    }
+
+    def decorateValsImpl[A: Type](output: Expr[ValDefInspection => Unit], block: Expr[A])(using Quotes): Expr[A] = {
+      import quotes.reflect.*
+
+      // https://melgenek.github.io/scala-3-dynamodb
+      //      class MyTreeMap extends TreeMap {
+      //        override def transformTree(tree: Tree)(owner: quotes.reflect.Symbol): Tree = {
+      //          tree match {
+      //            case valdef@ValDef(_, termName, _, _) =>
+      //              List(
+      //                valdef,
+      //                '{ $output(ValDefInspection(${termName.encodedName.toString}, $termName)) }
+      //              )
+      //            case other => transformTree(other)(owner)
+      //          }
+      //        }
+      //      }
+      //      // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
+      //      val treeMap = new MyTreeMap
+      //      val blockTerm: Term = block.asTerm
+      //      treeMap.transformTree(blockTerm)(Symbol.spliceOwner)
+
+      block
+
+      //
+      //      val loggedStats = block.asTerm.symbol.tree.flatMap {
+      //        case valdef @ ValDef(_, termName, _, _) =>
+      //          List(
+      //            valdef,
+      //            '{ $output(ValDefInspection(${termName.encodedName.toString}, $termName)) }
+      //          )
+      //        case stat =>
+      //          List(stat)
+      //      }
+      //      val outputExpr: Expr[A] = '{ $loggedStats }
+      //      outputExpr
     }
   }
 

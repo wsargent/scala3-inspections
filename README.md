@@ -76,3 +76,16 @@ and the given output:
 ```
 62   [run-main-5] DEBUG example.Main - case s if s.startsWith("20") = true
 ```
+
+## Dump Expression
+
+```scala
+val dr: ExprInspection[Int] = InspectionMacros.dumpExpression(1 + 1)
+println(s"result: ${dr.code} = ${dr.value}")
+```
+
+produces:
+
+```
+result: 1 + 1 = 2
+```

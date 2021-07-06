@@ -4,6 +4,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Logger, LoggerContext}
 import ch.qos.logback.core.Appender
 import ch.qos.logback.core.read.ListAppender
+import example.InspectionMacros.dumpExpression
 import org.slf4j.LoggerFactory
 
 import java.util.Objects.requireNonNull
@@ -33,6 +34,14 @@ object Main {
       }
     }
 
+    val dr: ExprInspection[Int] = InspectionMacros.dumpExpression(1 + 1)
+    println(s"result: ${dr.code} = ${dr.value}")
+
+    InspectionMacros.decorateVals(dval => logger.debug(s"${dval.name} = ${dval.value}")) {
+       val a = 5
+       val b = 15
+       a + b
+    }
 
     //val list = listAppender.list
     //println(list.get(0).getMessage) // check that the debug message is in there

@@ -160,7 +160,16 @@ object InspectionMacros {
       class MyTreeMap extends TreeMap {
         override def transformTree(tree: Tree)(owner: quotes.reflect.Symbol): Tree = {          
           tree match {
+            case inlined@Inlined(_,_,ident) =>
+              ident.symbol.tree match {
+                case DefDef(_, _, d, Some(block)) => {
+                  println(s"block = ${block}")
+                }
+              }              
+              super.transformTree(inlined)(owner)
+
             case other => 
+              println(s"other = ${other}")
               super.transformTree(other)(owner)
           }
         }

@@ -52,7 +52,6 @@ object InspectionMacros {
         case Inlined(_, _, matchIdent: Ident) =>
           matchIdent.symbol.tree match {
             case DefDef(_, _, _, Some(term)) =>
-              // Block(List(),Match(Ident(string),List(CaseDef(Bind(s,Ident(_)),Apply(Select(Ident(s),startsWith),List(Literal(Constant(20)))),Block(List(),Apply(Ident(println),List(Literal(Constant(this example is still valid)))))), CaseDef(Ident(_),EmptyTree,Block(List(),Apply(Ident(println),List(Literal(Constant(oh dear)))))))))
               //println(s"matchStatement = ${term}")
               val modifiedMatch = term match {
                 case Block(b, Match(m, cases)) =>
@@ -79,7 +78,7 @@ object InspectionMacros {
                   other
               }
               //println(s"${modifiedMatch.show}")
-              modifiedMatch.asExpr.asInstanceOf[Expr[A]]
+              modifiedMatch.asExprOf[A]
 
             case otherIdent =>
               report.error(s"Not a valid identifier: ${otherIdent}")
@@ -107,7 +106,7 @@ object InspectionMacros {
 
           case other =>
             //println(s"Rendering block as $other")
-            ifTerm.asExpr.asInstanceOf[Expr[A]]
+            ifTerm.asExprOf[A]
         }
       }
 
@@ -115,8 +114,8 @@ object InspectionMacros {
         val condSource = condTerm.show
         val branchTrue = '{ BranchInspection(${Expr(condSource)}, true) }
         val branchFalse = '{ BranchInspection(${Expr(condSource)}, false) }
-        val cond: Expr[Boolean] = condTerm.asExpr.asInstanceOf[Expr[Boolean]]
-        val thenp: Expr[A] = thenTerm.asExpr.asInstanceOf[Expr[A]]
+        val cond: Expr[Boolean] = condTerm.asExprOf[Boolean]
+        val thenp: Expr[A] = thenTerm.asExprOf[A]
         val elsep: Expr[A] = findIfMethod(elseTerm)
 
         // Return a construction with the new statement
@@ -156,25 +155,21 @@ object InspectionMacros {
     def decorateValsImpl[A: Type](output: Expr[ValDefInspection => Unit], block: Expr[A])(using Quotes): Expr[A] = {
       import quotes.reflect.*
 
+      // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
       // https://melgenek.github.io/scala-3-dynamodb
-      //      class MyTreeMap extends TreeMap {
-      //        override def transformTree(tree: Tree)(owner: quotes.reflect.Symbol): Tree = {
-      //          tree match {
-      //            case valdef@ValDef(_, termName, _, _) =>
-      //              List(
-      //                valdef,
-      //                '{ $output(ValDefInspection(${termName.encodedName.toString}, $termName)) }
-      //              )
-      //            case other => transformTree(other)(owner)
-      //          }
-      //        }
-      //      }
-      //      // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
-      //      val treeMap = new MyTreeMap
-      //      val blockTerm: Term = block.asTerm
-      //      treeMap.transformTree(blockTerm)(Symbol.spliceOwner)
-
-      block
+      class MyTreeMap extends TreeMap {
+        override def transformTree(tree: Tree)(owner: quotes.reflect.Symbol): Tree = {          
+          tree match {
+            case other => 
+              super.transformTree(other)(owner)
+          }
+        }
+      }
+      
+      val treeMap = new MyTreeMap
+      val blockTerm: Term = block.asTerm
+      val result = treeMap.transformTree(blockTerm)(Symbol.spliceOwner)
+      result.asExprOf[A]
 
       //
       //      val loggedStats = block.asTerm.symbol.tree.flatMap {

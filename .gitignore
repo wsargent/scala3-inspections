@@ -25,3 +25,5 @@ project/metals.sbt
 
 .bsp/
 .idea/
+.vscode/
+project/project/

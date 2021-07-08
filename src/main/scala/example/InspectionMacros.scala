@@ -161,52 +161,36 @@ object InspectionMacros {
       block.asTerm match {
         case inlined@Inlined(_,_,ident) =>
           ident.symbol.tree match {
-            case DefDef(_, _, d, Some(block)) => {
+            case defdef @ DefDef(name, paramss, d, Some(Block(list, expr))) => {
               //println(s"block = ${block}")
-              block match {
-                case Block(list, expr) =>
-                  println(s"list = ${list}")
-                  println(s"expr = ${expr}")
-                  list match {
-                    case head :: tail =>
-                      head match {
-                        case valdef @ ValDef(termName, typeTree, Some(rhs)) =>
-                          val termExpr: Expr[String] = Expr(termName)
-                           // Option, should this be set if not there?
-                          val termRef = TermRef(typeTree.tpe, termName)
-                          val ident = Ident(termRef).asExpr
-                          val inspection = '{ $output(ValDefInspection($termExpr, $ident)) }
-                          println(s"inspection = ${inspection.show}")
-                          List(valdef, inspection)
-                        case other =>
-                          println(s"valDef = $head")
-                      }
-
+              val result: List[Statement] = list match {
+                case head :: tail =>
+                  head match {
+                    case valdef @ ValDef(termName, typeTree, Some(rhs)) =>
+                      val termExpr: Expr[String] = Expr(termName)
+                       // Option, should this be set if not there?
+                      val termRef = TermRef(typeTree.tpe, termName)
+                      val identExpr = Ident(termRef).asExpr
+                      val inspection: Term = '{ $output(ValDefInspection($termExpr, $identExpr)) }.asTerm
+                      println(s"inspection = ${inspection.show}")
+                      valdef :: inspection :: tail
                     case other =>
-                      println(s"other = $other")
+                      //println(s"valDef = $head")
+                      List(other)
                   }
+
+                case other =>
+                  other
               }
+
+              DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr))).asExprOf[A]
             }
           }              
           
         case other => 
           println(s"other = ${other}")
+          other.asExprOf[A]
       }
-
-      block
-
-      //
-      //      val loggedStats = block.asTerm.symbol.tree.flatMap {
-      //        case valdef @ ValDef(_, termName, _, _) =>
-      //          List(
-      //            valdef,
-      //            '{ $output(ValDefInspection(${termName.encodedName.toString}, $termName)) }
-      //          )
-      //        case stat =>
-      //          List(stat)
-      //      }
-      //      val outputExpr: Expr[A] = '{ $loggedStats }
-      //      outputExpr
     }
   }
 

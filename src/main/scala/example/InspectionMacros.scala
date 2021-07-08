@@ -173,17 +173,19 @@ object InspectionMacros {
                       val identExpr = Ident(termRef).asExpr
                       val inspection: Term = '{ $output(ValDefInspection($termExpr, $identExpr)) }.asTerm
                       println(s"inspection = ${inspection.show}")
-                      valdef :: inspection :: tail
+                      head :: inspection :: tail
                     case other =>
                       //println(s"valDef = $head")
-                      List(other)
+                      head :: tail
                   }
 
                 case other =>
                   other
               }
 
-              DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr))).asExprOf[A]
+              // This needs to set up a new list of statements
+              val expansion = DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr)))              
+              Inlined(call, bindings, expansion)
             }
           }              
           

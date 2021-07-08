@@ -157,28 +157,43 @@ object InspectionMacros {
 
       // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
       // https://melgenek.github.io/scala-3-dynamodb
-      class MyTreeMap extends TreeMap {
-        override def transformTree(tree: Tree)(owner: quotes.reflect.Symbol): Tree = {          
-          tree match {
-            case inlined@Inlined(_,_,ident) =>
-              ident.symbol.tree match {
-                case DefDef(_, _, d, Some(block)) => {
-                  println(s"block = ${block}")
-                }
-              }              
-              super.transformTree(inlined)(owner)
 
-            case other => 
-              println(s"other = ${other}")
-              super.transformTree(other)(owner)
-          }
-        }
+      block.asTerm match {
+        case inlined@Inlined(_,_,ident) =>
+          ident.symbol.tree match {
+            case DefDef(_, _, d, Some(block)) => {
+              //println(s"block = ${block}")
+              block match {
+                case Block(list, expr) =>
+                  println(s"list = ${list}")
+                  println(s"expr = ${expr}")
+                  list match {
+                    case head :: tail =>
+                      head match {
+                        case valdef @ ValDef(termName, typeTree, Some(rhs)) =>
+                          val termExpr: Expr[String] = Expr(termName)
+                           // Option, should this be set if not there?
+                          val termRef = TermRef(typeTree.tpe, termName)
+                          val ident = Ident(termRef).asExpr
+                          val inspection = '{ $output(ValDefInspection($termExpr, $ident)) }
+                          println(s"inspection = ${inspection.show}")
+                          List(valdef, inspection)
+                        case other =>
+                          println(s"valDef = $head")
+                      }
+
+                    case other =>
+                      println(s"other = $other")
+                  }
+              }
+            }
+          }              
+          
+        case other => 
+          println(s"other = ${other}")
       }
-      
-      val treeMap = new MyTreeMap
-      val blockTerm: Term = block.asTerm
-      val result = treeMap.transformTree(blockTerm)(Symbol.spliceOwner)
-      result.asExprOf[A]
+
+      block
 
       //
       //      val loggedStats = block.asTerm.symbol.tree.flatMap {

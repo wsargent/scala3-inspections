@@ -37,7 +37,7 @@ object Main {
     val dr: ExprInspection[Int] = InspectionMacros.dumpExpression(1 + 1)
     println(s"result: ${dr.code} = ${dr.value}")
 
-    InspectionMacros.decorateVals(dval => logger.debug(s"${dval.name} = ${dval.value}")) {
+    InspectionMacros.decorateVals(dval => logger.debug(s"decorateVals: ${dval.name} = ${dval.value}")) {
        val a = 5
        val b = 15
        a + b

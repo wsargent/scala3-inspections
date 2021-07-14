@@ -168,9 +168,8 @@ object InspectionMacros {
                   head match {
                     case valdef @ ValDef(termName, typeTree, Some(rhs)) =>
                       val termExpr: Expr[String] = Expr(termName)
-                       // Option, should this be set if not there?
                       val termRef = TermRef(typeTree.tpe, termName)
-                      val identExpr = Ident(termRef).asExpr
+                      val identExpr = Ref(valdef.symbol).asExpr
                       val inspection: Term = '{ $output(ValDefInspection($termExpr, $identExpr)) }.asTerm
                       println(s"inspection = ${inspection.show}")
                       head :: inspection :: tail
@@ -182,10 +181,9 @@ object InspectionMacros {
                 case other =>
                   other
               }
-
-              // This needs to set up a new list of statements
               val modified = DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr)))
-              Inlined(call, bindings, expansion).asExprOf[A]
+              val someRef = Ref(modified.symbol)
+              Inlined(call, bindings, someRef).asExprOf[A]
             }
           }
 

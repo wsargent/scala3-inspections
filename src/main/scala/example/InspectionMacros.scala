@@ -159,8 +159,8 @@ object InspectionMacros {
       // https://melgenek.github.io/scala-3-dynamodb
 
       block.asTerm match {
-        case inlined@Inlined(_,_,ident) =>
-          ident.symbol.tree match {
+        case inlined@Inlined(call,bindings,expansion) =>
+          expansion.symbol.tree match {
             case defdef @ DefDef(name, paramss, d, Some(Block(list, expr))) => {
               //println(s"block = ${block}")
               val result: List[Statement] = list match {
@@ -184,12 +184,12 @@ object InspectionMacros {
               }
 
               // This needs to set up a new list of statements
-              val expansion = DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr)))              
-              Inlined(call, bindings, expansion)
+              val modified = DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr)))
+              Inlined(call, bindings, expansion).asExprOf[A]
             }
-          }              
-          
-        case other => 
+          }
+
+        case other =>
           println(s"other = ${other}")
           other.asExprOf[A]
       }

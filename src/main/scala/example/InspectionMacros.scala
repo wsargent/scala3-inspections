@@ -37,7 +37,7 @@ object InspectionMacros {
   inline def dumpExpression[A](block: A): ExprInspection[A] =
     ${ Impl.dumpExpressionImpl('block) }
 
-  inline def decorateVals[A](output: ValDefInspection => Unit)(block: => A): A =
+  inline def decorateVals[A](output: ValDefInspection => Unit)(inline block: A): A =
     ${ Impl.decorateValsImpl('output, 'block) }
 
   object Impl {
@@ -155,62 +155,34 @@ object InspectionMacros {
     def decorateValsImpl[A: Type](output: Expr[ValDefInspection => Unit], block: Expr[A])(using Quotes): Expr[A] = {
       import quotes.reflect.*
 
-      // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
-      // https://melgenek.github.io/scala-3-dynamodb
-      val myMethodSymbol = Symbol.newMethod(
-        Symbol.spliceOwner,
-        "newMethodName",
-        TypeRepr.of[A]
-        )
-
-      val b = block.asTerm match {
-        case inlined@Inlined(call,bindings,expansion) =>
-          val e: Tree = expansion.symbol.tree match {
-            case defdef @ DefDef(name, paramss, d, Some(Block(list, expr))) => {
-              //println(s"block = ${block}")
-              val result: List[Statement] = list match {
-                case head :: tail =>
-                  head match {
-                    case valdef @ ValDef(termName, typeTree, Some(rhs)) =>
-                      val termExpr: Expr[String] = Expr(termName)
-                      val termRef = TermRef(typeTree.tpe, termName)
-                      val identExpr = Ref(valdef.symbol).asExpr
-                      val inspection: Term = '{ $output(ValDefInspection($termExpr, $identExpr)) }.asTerm
-                      println(s"inspection = ${inspection.show}")
-                      head :: inspection :: tail
-                    case other =>
-                      println(s"valDef = $head")
-                      head :: tail
-                  }
-
-                case other =>
-                  println(s"list contains = $other")
-                  other
-              }
-
-              println(s"result = $result")
-              val modified = DefDef(myMethodSymbol, {
-                case List() => Some(Block(result, expr))
-              })
-              println(s"modified = $modified")
-              val someRef = Ref(modified.symbol)
-              println(s"modified ident = $someRef")
-              Inlined(call, bindings, someRef)
-            }
-
-            case other =>
-              println(s"other = $other")
-              other
-          }
-          println(s"e = ${e.show(using Printer.TreeStructure)}")
-          e.asExprOf[A]
-
-        case other =>
-          println(s"other = ${other}")
-          other.asExprOf[A]
+      def rewriteBlock(data: Term): Term = {
+        data match {
+          case Block(stmts, expr) =>
+            val newStmts = stmts.flatMap(rewriteStatement)
+            Block(newStmts, expr)
+        }
       }
-      println(s"b = ${b.asTerm.show(using Printer.TreeStructure)}")
-      b
+
+      def rewriteStatement(statement: Statement): List[Statement] = {
+        statement match {
+          case valdef: ValDef =>
+            val termExpr: Expr[String] = Expr(valdef.name)
+            val termRef = TermRef(valdef.tpt.tpe, valdef.name)
+            val identExpr = Ref(valdef.symbol).asExpr
+            val inspection: Term = '{ $output(ValDefInspection($termExpr, $identExpr)) }.asTerm
+            List(valdef, inspection)
+          case other =>
+            List(other)
+        }
+      }
+
+      block.asTerm match {
+        case Inlined(emptyTree, emptyList, statementBlock) =>
+          val newBlock = rewriteBlock(statementBlock)
+          Inlined(emptyTree, emptyList, newBlock).asExprOf[A]
+        case _ =>
+          block
+      }
     }
   }
 

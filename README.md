@@ -1,4 +1,4 @@
-## Scala 3 Inspection Macro
+# Scala 3 Inspection Macro
 
 This is an implementation of inspection macros in Scala 3, which rewrites the AST to insert logging statements.
 

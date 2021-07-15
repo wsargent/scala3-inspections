@@ -157,10 +157,15 @@ object InspectionMacros {
 
       // https://docs.scala-lang.org/scala3/guides/macros/reflection.html
       // https://melgenek.github.io/scala-3-dynamodb
+      val myMethodSymbol = Symbol.newMethod(
+        Symbol.spliceOwner,
+        "newMethodName",
+        TypeRepr.of[A]
+        )
 
-      block.asTerm match {
+      val b = block.asTerm match {
         case inlined@Inlined(call,bindings,expansion) =>
-          expansion.symbol.tree match {
+          val e: Tree = expansion.symbol.tree match {
             case defdef @ DefDef(name, paramss, d, Some(Block(list, expr))) => {
               //println(s"block = ${block}")
               val result: List[Statement] = list match {
@@ -174,23 +179,38 @@ object InspectionMacros {
                       println(s"inspection = ${inspection.show}")
                       head :: inspection :: tail
                     case other =>
-                      //println(s"valDef = $head")
+                      println(s"valDef = $head")
                       head :: tail
                   }
 
                 case other =>
+                  println(s"list contains = $other")
                   other
               }
-              val modified = DefDef.copy(defdef)(name = name, paramss = paramss, d, Some(Block(result, expr)))
+
+              println(s"result = $result")
+              val modified = DefDef(myMethodSymbol, {
+                case List() => Some(Block(result, expr))
+              })
+              println(s"modified = $modified")
               val someRef = Ref(modified.symbol)
-              Inlined(call, bindings, someRef).asExprOf[A]
+              println(s"modified ident = $someRef")
+              Inlined(call, bindings, someRef)
             }
+
+            case other =>
+              println(s"other = $other")
+              other
           }
+          println(s"e = ${e.show(using Printer.TreeStructure)}")
+          e.asExprOf[A]
 
         case other =>
           println(s"other = ${other}")
           other.asExprOf[A]
       }
+      println(s"b = ${b.asTerm.show(using Printer.TreeStructure)}")
+      b
     }
   }
 
